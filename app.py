@@ -46,62 +46,36 @@ def analyze_crypto(data):
     data['ema_26'] = EMAIndicator(data['close'], window=26).ema_indicator()
     return data
 
-
 # Function to calculate profitability
 def calculate_profitability(investment, entry_price, take_profit_price, stop_loss_price):
-    # Deduct maker fee directly from the investment
     maker_fee = investment * MAKER_FEE
     effective_investment = investment - maker_fee
-    
-    # Crypto quantity after fee deduction
     crypto_quantity = effective_investment / entry_price
-    
-    # Total cost with maker fee included
     total_cost = effective_investment + maker_fee
-    
-    # Profit/Loss at take-profit and stop-loss
     profit_take_profit = (crypto_quantity * take_profit_price) - total_cost
     loss_stop_loss = (crypto_quantity * stop_loss_price) - total_cost
-    
-    # Break-even price accounting for taker fee
     breakeven_price = (total_cost / crypto_quantity) * (1 + TAKER_FEE)
-    
     return maker_fee, total_cost, profit_take_profit, loss_stop_loss, breakeven_price
 
-
-
 # Function to generate actionable insights for Quick Trade Mode
-def quick_trade_analysis(data, investment, effective_price):
+def quick_trade_analysis(data, investment, effective_price, custom_take_profit=None, custom_stop_loss=None):
     last_close = data['close'].iloc[-1]
-    
-    # Take-Profit Recommendation
-    take_profit = data['bb_upper'].iloc[-1]
-
-    # Stop-Loss Recommendation
-    stop_loss = max(data['bb_lower'].iloc[-1], data['ema_26'].iloc[-1])
-
+    take_profit = custom_take_profit if custom_take_profit and custom_take_profit > 0 else data['bb_upper'].iloc[-1]
+    stop_loss = custom_stop_loss if custom_stop_loss and custom_stop_loss > 0 else max(data['bb_lower'].iloc[-1], data['ema_26'].iloc[-1])
     maker_fee, total_cost, profit_take_profit, loss_stop_loss, breakeven_price = calculate_profitability(
         investment, effective_price, take_profit, stop_loss
     )
-
     insights = []
-
-    # Entry Recommendation
     if last_close > data['ema_9'].iloc[-1] and last_close > data['bb_middle'].iloc[-1]:
         insights.append("Price is above EMA 9 and Bollinger Band middle line. Consider entering a trade now.")
     elif last_close <= data['bb_middle'].iloc[-1] and last_close >= data['ema_26'].iloc[-1]:
         insights.append("Price is near support levels (EMA 26 or middle Bollinger Band). Look for bullish confirmation to enter.")
     else:
         insights.append("Price is below key support levels. Wait for a better entry.")
-
-    insights.append(f"Set a take-profit target near the upper Bollinger Band at ${take_profit:.4f}.")
-    insights.append(f"Set a stop-loss near ${stop_loss:.4f} to manage risk.")
+    insights.append(f"Set a take-profit target at ${take_profit:.4f}.")
+    insights.append(f"Set a stop-loss at ${stop_loss:.4f} to manage risk.")
     insights.append(f"Break-even price (including fees): ${breakeven_price:.4f}")
-
     return insights, maker_fee, total_cost, profit_take_profit, loss_stop_loss, take_profit, stop_loss, breakeven_price
-
-
-
 
 # Streamlit UI
 st.title("Crypto Analysis Dashboard")
@@ -118,7 +92,14 @@ actual_entry_price = None
 if use_actual_price:
     actual_entry_price = st.sidebar.number_input("Enter Your Entry Price ($)", value=0.0, step=0.000001, format="%.6f")
 
-quick_trade_mode = st.sidebar.checkbox("Enable Quick Trade Mode", value=False)
+# Toggle for custom take-profit and stop-loss
+use_custom_targets = st.sidebar.checkbox("Use Custom Take-Profit and Stop-Loss", value=False)
+custom_take_profit = None
+custom_stop_loss = None
+if use_custom_targets:
+    custom_take_profit = st.sidebar.number_input("Enter Custom Take-Profit Price ($)", value=0.0, step=0.000001, format="%.6f")
+    custom_stop_loss = st.sidebar.number_input("Enter Custom Stop-Loss Price ($)", value=0.0, step=0.000001, format="%.6f")
+
 refresh_rate = st.sidebar.slider("Set Refresh Rate (seconds)", 5, 300, 30)
 
 # Placeholders for updates
@@ -134,37 +115,28 @@ while True:
             data = analyze_crypto(data)
             last_close = data['close'].iloc[-1]
             effective_price = actual_entry_price if use_actual_price and actual_entry_price > 0 else last_close
+            insights, maker_fee, total_cost, profit_take_profit, loss_stop_loss, take_profit, stop_loss, breakeven_price = quick_trade_analysis(
+                data, investment, effective_price, custom_take_profit, custom_stop_loss
+            )
 
-            # Quick Trade Analysis
-            insights, maker_fee, total_cost, profit_take_profit, loss_stop_loss, take_profit, stop_loss, breakeven_price = quick_trade_analysis(data, investment, effective_price)  # Include breakeven_price
-
-            # Update Data Section
             with data_placeholder.container():
                 st.write("### Latest Data Points")
                 st.dataframe(data[['close', 'rsi', 'bb_upper', 'bb_middle', 'bb_lower', 'ema_9', 'ema_26']].tail())
 
-            # Update Insights Section
             with insights_placeholder.container():
                 st.write("### Insights")
                 for insight in insights:
                     st.write(f"- {insight}")
-
                 st.write("### Profitability Analysis")
                 st.write(f"**Investment Amount**: ${investment:.2f}")
                 if use_actual_price:
-                    st.write(f"**Your Entry Price**: ${actual_entry_price:.2f}")
-                st.write(f"**Current Price**: ${last_close:.2f}")
-                st.write(f"**Maker Fee**: ${maker_fee:.2f}")
-                st.write(f"**Total Cost (after fees)**: ${total_cost:.2f}") 
-                st.write(f"**Potential Profit at Take Profit ({take_profit:.4f})**: ${profit_take_profit:.2f}")
-                st.write(f"**Potential Loss at Stop Loss ({stop_loss:.4f})**: ${loss_stop_loss:.2f}")
+                    st.write(f"**Your Entry Price**: ${actual_entry_price:.6f}")
+                st.write(f"**Current Price**: ${last_close:.4f}")
+                st.write(f"**Maker Fee**: ${maker_fee:.4f}")
+                st.write(f"**Total Cost (after fees)**: ${total_cost:.4f}")
+                st.write(f"**Potential Profit at Take Profit ({take_profit:.4f})**: ${profit_take_profit:.4f}")
+                st.write(f"**Potential Loss at Stop Loss ({stop_loss:.4f})**: ${loss_stop_loss:.4f}")
                 st.write(f"**Break-Even Price (including taker fee)**: ${breakeven_price:.4f}")
-
-
-
-            # Update Charts Section
-           
-
 
             with charts_placeholder.container():
                 st.write("### Bollinger Bands Chart")

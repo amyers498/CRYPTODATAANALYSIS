@@ -116,7 +116,7 @@ investment = st.sidebar.number_input("Enter Investment Amount (in $)", value=100
 use_actual_price = st.sidebar.checkbox("Use My Entry Price", value=False)
 actual_entry_price = None
 if use_actual_price:
-    actual_entry_price = st.sidebar.number_input("Enter Your Entry Price ($)", value=0.0, step=0.01)
+    actual_entry_price = st.sidebar.number_input("Enter Your Entry Price ($)", value=0.0, step=0.000001, format="%.6f")
 
 quick_trade_mode = st.sidebar.checkbox("Enable Quick Trade Mode", value=False)
 refresh_rate = st.sidebar.slider("Set Refresh Rate (seconds)", 5, 300, 30)

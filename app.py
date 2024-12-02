@@ -56,17 +56,20 @@ def calculate_profitability(investment, entry_price, take_profit_price, stop_los
     # Crypto quantity after fee deduction
     crypto_quantity = effective_investment / entry_price
     
-    # Calculate total cost with maker fee included
+    # Total cost with maker fee included
     total_cost = effective_investment + maker_fee
     
-    # Profit/loss at take-profit and stop-loss
+    # Profit/Loss at take-profit and stop-loss
     profit_take_profit = (crypto_quantity * take_profit_price) - total_cost
     loss_stop_loss = (crypto_quantity * stop_loss_price) - total_cost
     
-    return maker_fee, total_cost, profit_take_profit, loss_stop_loss
+    # Break-even price accounting for taker fee
+    breakeven_price = (total_cost / crypto_quantity) * (1 + TAKER_FEE)
+    
+    return maker_fee, total_cost, profit_take_profit, loss_stop_loss, breakeven_price
 
 
-# Function to generate actionable insights for Quick Trade Mode
+
 # Function to generate actionable insights for Quick Trade Mode
 def quick_trade_analysis(data, investment, effective_price):
     last_close = data['close'].iloc[-1]
@@ -77,12 +80,9 @@ def quick_trade_analysis(data, investment, effective_price):
     # Stop-Loss Recommendation
     stop_loss = max(data['bb_lower'].iloc[-1], data['ema_26'].iloc[-1])
 
-    maker_fee, total_cost, profit_take_profit, loss_stop_loss = calculate_profitability(
+    maker_fee, total_cost, profit_take_profit, loss_stop_loss, breakeven_price = calculate_profitability(
         investment, effective_price, take_profit, stop_loss
     )
-
-    # Calculate break-even price
-    breakeven_price = (total_cost / (investment / effective_price))
 
     insights = []
 
@@ -99,6 +99,7 @@ def quick_trade_analysis(data, investment, effective_price):
     insights.append(f"Break-even price (including fees): ${breakeven_price:.4f}")
 
     return insights, maker_fee, total_cost, profit_take_profit, loss_stop_loss, take_profit, stop_loss, breakeven_price
+
 
 
 
@@ -154,10 +155,11 @@ while True:
                     st.write(f"**Your Entry Price**: ${actual_entry_price:.2f}")
                 st.write(f"**Current Price**: ${last_close:.2f}")
                 st.write(f"**Maker Fee**: ${maker_fee:.2f}")
-                st.write(f"**Total Cost (after fees)**: ${total_cost:.2f}")
+                st.write(f"**Total Cost (after fees)**: ${total_cost:.2f}") 
                 st.write(f"**Potential Profit at Take Profit ({take_profit:.4f})**: ${profit_take_profit:.2f}")
                 st.write(f"**Potential Loss at Stop Loss ({stop_loss:.4f})**: ${loss_stop_loss:.2f}")
-                st.write(f"**Break-Even Price**: ${breakeven_price:.4f}")
+                st.write(f"**Break-Even Price (including taker fee)**: ${breakeven_price:.4f}")
+
 
 
             # Update Charts Section

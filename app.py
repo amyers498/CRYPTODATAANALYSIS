@@ -147,6 +147,7 @@ while True:
                 ax.plot(data.index, data['bb_lower'], linestyle='--', color='green', label='Lower Band')
                 ax.legend()
                 st.pyplot(fig)
+                plt.close(fig)  # Close the figure to free memory
 
                 st.write("### RSI Chart")
                 fig, ax = plt.subplots(figsize=(12, 3))
@@ -155,5 +156,6 @@ while True:
                 ax.axhline(30, linestyle='--', color='green', label='Oversold')
                 ax.legend()
                 st.pyplot(fig)
+                plt.close(fig)  # Close the figure to free memory
 
     time.sleep(refresh_rate)

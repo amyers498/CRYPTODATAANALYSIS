@@ -50,16 +50,13 @@ def analyze_crypto(data):
 def calculate_profitability(investment, entry_price, take_profit_price, stop_loss_price):
     maker_fee = investment * MAKER_FEE
     taker_fee = investment * TAKER_FEE 
-
-    # Kraken subtracts fees from the investment amount (Corrected)
-    investment_after_fees = investment - maker_fee - taker_fee  
-    total_cost = investment 
+    total_cost = investment + maker_fee + taker_fee
 
     # Calculate profit/loss at take-profit
-    profit_take_profit = (investment_after_fees / entry_price * take_profit_price) - total_cost 
+    profit_take_profit = (investment / entry_price * take_profit_price) - total_cost 
 
     # Calculate profit/loss at stop-loss
-    loss_stop_loss =  (investment_after_fees / entry_price * stop_loss_price) - total_cost  
+    loss_stop_loss =  (investment / entry_price * stop_loss_price) - total_cost
 
     return maker_fee, total_cost, profit_take_profit, loss_stop_loss
 
@@ -77,8 +74,8 @@ def quick_trade_analysis(data, investment, effective_price):
         investment, effective_price, take_profit, stop_loss
     )
 
-    # Calculate break-even price
-    breakeven_price = (total_cost) / ((investment - maker_fee - taker_fee) / effective_price)  # Adjusted for fee deduction
+    # Calculate break-even price  (ADDED BACK)
+    breakeven_price = (total_cost + (total_cost * TAKER_FEE)) / (investment / effective_price)
 
     insights = []
 
@@ -92,9 +89,9 @@ def quick_trade_analysis(data, investment, effective_price):
 
     insights.append(f"Set a take-profit target near the upper Bollinger Band at ${take_profit:.4f}.")
     insights.append(f"Set a stop-loss near ${stop_loss:.4f} to manage risk.")
-    insights.append(f"Break-even price (including fees): ${breakeven_price:.4f}")
+    insights.append(f"Break-even price (including fees): ${breakeven_price:.4f}")  # Include break-even in insights
 
-    return insights, maker_fee, total_cost, profit_take_profit, loss_stop_loss, take_profit, stop_loss, breakeven_price
+    return insights, maker_fee, total_cost, profit_take_profit, loss_stop_loss, take_profit, stop_loss, breakeven_price  # Return breakeven_price
 
 
 # Streamlit UI
@@ -130,7 +127,7 @@ while True:
             effective_price = actual_entry_price if use_actual_price and actual_entry_price > 0 else last_close
 
             # Quick Trade Analysis
-            insights, maker_fee, total_cost, profit_take_profit, loss_stop_loss, take_profit, stop_loss, breakeven_price = quick_trade_analysis(data, investment, effective_price)
+            insights, maker_fee, total_cost, profit_take_profit, loss_stop_loss, take_profit, stop_loss, breakeven_price = quick_trade_analysis(data, investment, effective_price)  # Include breakeven_price
 
             # Update Data Section
             with data_placeholder.container():
@@ -152,9 +149,12 @@ while True:
                 st.write(f"**Total Cost (including fees)**: ${total_cost:.2f}") 
                 st.write(f"**Potential Profit at Take Profit ({take_profit:.4f})**: ${profit_take_profit:.2f}")
                 st.write(f"**Potential Loss at Stop Loss ({stop_loss:.4f})**: ${loss_stop_loss:.2f}")
-                st.write(f"**Break-Even Price**: ${breakeven_price:.4f}")
+                st.write(f"**Break-Even Price**: ${breakeven_price:.4f}")  # Display break-even price (ADDED BACK)
 
             # Update Charts Section
+           
+
+
             with charts_placeholder.container():
                 st.write("### Bollinger Bands Chart")
                 fig, ax = plt.subplots(figsize=(12, 6))

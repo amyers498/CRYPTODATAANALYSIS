@@ -1,0 +1,7 @@
+streamlit
+krakenex
+ta
+matplotlib
+pandas
+numpy
+python-dotenv
